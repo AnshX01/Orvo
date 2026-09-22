@@ -85,34 +85,6 @@ To run manually in the background:
 
 ---
 
-## System Architecture
-
-```
-                       Global Hotkey (pynput)
-                        Default: Alt + `
-                              │
-                              ▼
-┌──────────────────┐    ┌───────────┐    ┌─────────────────────┐
-│  System Tray App │◄───┤  OrvoApp  ├───►│ Minimal Status HUD  │
-│ (pystray+Pillow) │    │  Engine   │    │ 32-bit Alpha Window │
-└──────────────────┘    └─────┬─────┘    └─────────────────────┘
-                              │
-               ┌──────────────┴──────────────┐
-               ▼                             ▼
-        AudioRecorder               TranscriberManager
-         16kHz Mono                  faster-whisper int8
-        -48dB Threshold             SentenceFormer Engine
-               │                             │
-               └──────────────┬──────────────┘
-                              ▼
-                      SafeTextInjector
-                   Atomic Clipboard Backup
-                    Paste Key Simulation
-                  Instant Clipboard Restore
-```
-
----
-
 ## License
 
 MIT License. See `LICENSE` for details.
