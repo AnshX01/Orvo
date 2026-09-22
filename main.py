@@ -450,6 +450,13 @@ class OrvoApp:
         logger.info("Orvo is running in the background. Press %s to speak!",
                     self.config.hotkey.key)
 
+        # Show brief startup HUD confirmation so the user visually sees Orvo is ready
+        if self.hud_overlay and self.config.ui.show_hud:
+            try:
+                self.hud_overlay.show_success(duration_ms=1800)
+            except Exception as exc:
+                logger.debug("Startup HUD visual confirmation: %s", exc)
+
     def run(self) -> None:
         """Runs the application until interrupted."""
         self.start()
@@ -519,8 +526,21 @@ def main():
 
     lock = SingleInstanceLock()
     if not lock.acquire():
-        print("[Orvo] An instance of Orvo is already running in the background.")
         logger.info("Existing Orvo instance detected. Exiting new process cleanly.")
+        print("[Orvo] An instance of Orvo is already running in the background.")
+        if sys.platform == "win32":
+            try:
+                import ctypes
+                ctypes.windll.user32.MessageBoxW(
+                    0,
+                    "Orvo is already running in the background.\n\n"
+                    "• Press Alt + ` (Backtick) anywhere to dictate\n"
+                    "• Check your system tray (near the taskbar clock) for settings",
+                    "Orvo",
+                    0x40 | 0x10000,
+                )
+            except Exception:
+                pass
         sys.exit(0)
 
     app = OrvoApp()
