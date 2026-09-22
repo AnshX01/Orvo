@@ -26,7 +26,7 @@ def get_windows_launch_command() -> str:
 
 def get_macos_launch_command() -> str:
     """Returns the macOS launch script path."""
-    return os.path.join(ROOT_DIR, "run_macos.sh")
+    return os.path.join(ROOT_DIR, "run_mac.sh")
 
 
 def get_linux_launch_command() -> str:

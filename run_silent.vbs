@@ -10,7 +10,7 @@ strMainPy = strScriptDir & "\main.py"
 
 If Not fso.FileExists(strPythonW) Then
     MsgBox "Orvo environment not found!" & vbCrLf & _
-           "Please run setup.bat first to configure Python and install dependencies.", _
+           "Please run setup_windows.bat first to configure Python and install dependencies.", _
            vbCritical, "Orvo Error"
     WScript.Quit 1
 End If

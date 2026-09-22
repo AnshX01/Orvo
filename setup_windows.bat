@@ -1,9 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
-title Orvo Setup
+title Orvo Windows Setup
 
 echo ===================================================
-echo     Orvo - Cross-Platform Voice Dictation Setup
+echo     Orvo - Windows Setup
 echo ===================================================
 echo.
 

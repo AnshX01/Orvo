@@ -23,9 +23,9 @@ Orvo is a lightweight, low-latency, system-wide voice dictation application for 
 - Microphone input device.
 
 ### Windows
-Run the automated setup batch script:
+Run the single automated setup script:
 ```cmd
-setup.bat
+setup_windows.bat
 ```
 The script will:
 1. Detect or configure a virtual environment (`.venv`).
@@ -35,14 +35,14 @@ The script will:
 5. Prompt to launch Orvo immediately in the background.
 
 To run manually after setup:
-- Background mode (recommended): double-click `run_silent.vbs` or run `pythonw main.py`.
-- Terminal / debug mode: run `run.bat` or `python main.py`.
+- Background mode (recommended): double-click `run_windows.bat`, `run_silent.vbs`, or execute `pythonw main.py`.
+- Terminal / debug mode: run `run_windows.bat --console` or `python main.py`.
 
 ### macOS
-Run the setup shell script:
+Run the single automated setup script:
 ```bash
-chmod +x setup_macos.sh
-./setup_macos.sh
+chmod +x setup_mac.sh
+./setup_mac.sh
 ```
 The script configures the virtual environment, installs dependencies, pre-warms the model, and prompts to configure Open on Login via LaunchAgents.
 
@@ -51,7 +51,7 @@ Grant Accessibility permissions to your Terminal/Python application under `Syste
 
 To run manually in the background:
 ```bash
-./run_macos.sh
+./run_mac.sh
 ```
 
 ### Linux
@@ -59,7 +59,7 @@ Install system audio and clipboard dependencies (Ubuntu/Debian example):
 ```bash
 sudo apt update && sudo apt install -y python3 python3-venv python3-pip libportaudio2 xclip xdotool
 ```
-Run the setup shell script:
+Run the single automated setup script:
 ```bash
 chmod +x setup_linux.sh
 ./setup_linux.sh

@@ -85,7 +85,7 @@ echo ""
 read -p "Launch Orvo in the background now? (Y/n): " START_NOW
 START_NOW=${START_NOW:-Y}
 if [[ ! "$START_NOW" =~ ^[Nn] ]]; then
-    chmod +x run_macos.sh
-    ./run_macos.sh
+    chmod +x run_mac.sh
+    ./run_mac.sh
     echo "[INFO] Orvo is now running in the background. Press Alt + \` to speak!"
 fi

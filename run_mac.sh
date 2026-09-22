@@ -13,7 +13,7 @@ if [ -f ".venv/bin/python" ]; then
 elif [ -f ".venv/bin/python3" ]; then
     PY_BIN=".venv/bin/python3"
 else
-    echo "Virtual environment not found! Run ./setup_macos.sh first."
+    echo "Virtual environment not found! Run ./setup_mac.sh first."
     exit 1
 fi
 

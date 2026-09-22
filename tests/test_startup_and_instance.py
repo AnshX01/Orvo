@@ -26,7 +26,7 @@ class TestStartupManager(unittest.TestCase):
         linux_cmd = get_linux_launch_command()
 
         self.assertIn("run_silent.vbs", win_cmd)
-        self.assertTrue(mac_cmd.endswith("run_macos.sh"))
+        self.assertTrue(mac_cmd.endswith("run_mac.sh"))
         self.assertTrue(linux_cmd.endswith("run_linux.sh"))
 
     @patch("src.startup_manager._is_windows_startup_enabled", return_value=True)

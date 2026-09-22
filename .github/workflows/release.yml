@@ -25,7 +25,7 @@ jobs:
       - name: Prepare Windows Package
         run: |
           mkdir -p dist/orvo-windows
-          cp -r src tests config.json requirements.txt main.py setup.bat run.bat run_silent.vbs README.md LICENSE .gitignore dist/orvo-windows/ 2>/dev/null || cp -r src tests config.json requirements.txt main.py setup.bat run.bat run_silent.vbs README.md .gitignore dist/orvo-windows/
+          cp -r src tests config.json requirements.txt main.py setup_windows.bat run_windows.bat run_silent.vbs README.md LICENSE .gitignore dist/orvo-windows/ 2>/dev/null || cp -r src tests config.json requirements.txt main.py setup_windows.bat run_windows.bat run_silent.vbs README.md .gitignore dist/orvo-windows/
           cd dist
           zip -r orvo-windows-x64.zip orvo-windows
           cd ..
@@ -33,7 +33,7 @@ jobs:
       - name: Prepare macOS Package
         run: |
           mkdir -p dist/orvo-macos
-          cp -r src tests config.json requirements.txt main.py setup_macos.sh run_macos.sh README.md LICENSE .gitignore dist/orvo-macos/ 2>/dev/null || cp -r src tests config.json requirements.txt main.py setup_macos.sh run_macos.sh README.md .gitignore dist/orvo-macos/
+          cp -r src tests config.json requirements.txt main.py setup_mac.sh run_mac.sh README.md LICENSE .gitignore dist/orvo-macos/ 2>/dev/null || cp -r src tests config.json requirements.txt main.py setup_mac.sh run_mac.sh README.md .gitignore dist/orvo-macos/
           chmod +x dist/orvo-macos/*.sh
           cd dist
           tar -czvf orvo-macos-universal.tar.gz orvo-macos
@@ -57,8 +57,8 @@ jobs:
             Orvo universal voice dictation application packages for Windows, macOS, and Linux.
 
             ### Downloads:
-            - **Windows**: `orvo-windows-x64.zip` (extract and run `setup.bat`)
-            - **macOS**: `orvo-macos-universal.tar.gz` (extract and run `./setup_macos.sh`)
+            - **Windows**: `orvo-windows-x64.zip` (extract and run `setup_windows.bat`)
+            - **macOS**: `orvo-macos-universal.tar.gz` (extract and run `./setup_mac.sh`)
             - **Linux**: `orvo-linux-x64.tar.gz` (extract and run `./setup_linux.sh`)
           files: |
             dist/orvo-windows-x64.zip
