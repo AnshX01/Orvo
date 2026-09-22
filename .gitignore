@@ -1,0 +1,39 @@
+# Virtual Environments
+.venv/
+env/
+venv/
+ENV/
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution & Build
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Application Logs & Runtime Files
+logs/
+*.log
+history.json
+src/history.json
+scratch/
+*.lock
+
+# OS & Editor Artifacts
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace

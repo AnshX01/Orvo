@@ -1,0 +1,68 @@
+name: Build and Release Orvo
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-packages:
+    name: Package Releases for Windows, macOS, and Linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Prepare Windows Package
+        run: |
+          mkdir -p dist/orvo-windows
+          cp -r src tests config.json requirements.txt main.py setup.bat run.bat run_silent.vbs README.md LICENSE .gitignore dist/orvo-windows/ 2>/dev/null || cp -r src tests config.json requirements.txt main.py setup.bat run.bat run_silent.vbs README.md .gitignore dist/orvo-windows/
+          cd dist
+          zip -r orvo-windows-x64.zip orvo-windows
+          cd ..
+
+      - name: Prepare macOS Package
+        run: |
+          mkdir -p dist/orvo-macos
+          cp -r src tests config.json requirements.txt main.py setup_macos.sh run_macos.sh README.md LICENSE .gitignore dist/orvo-macos/ 2>/dev/null || cp -r src tests config.json requirements.txt main.py setup_macos.sh run_macos.sh README.md .gitignore dist/orvo-macos/
+          chmod +x dist/orvo-macos/*.sh
+          cd dist
+          tar -czvf orvo-macos-universal.tar.gz orvo-macos
+          cd ..
+
+      - name: Prepare Linux Package
+        run: |
+          mkdir -p dist/orvo-linux
+          cp -r src tests config.json requirements.txt main.py setup_linux.sh run_linux.sh README.md LICENSE .gitignore dist/orvo-linux/ 2>/dev/null || cp -r src tests config.json requirements.txt main.py setup_linux.sh run_linux.sh README.md .gitignore dist/orvo-linux/
+          chmod +x dist/orvo-linux/*.sh
+          cd dist
+          tar -czvf orvo-linux-x64.tar.gz orvo-linux
+          cd ..
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: Orvo Release ${{ github.ref_name }}
+          body: |
+            Orvo universal voice dictation application packages for Windows, macOS, and Linux.
+
+            ### Downloads:
+            - **Windows**: `orvo-windows-x64.zip` (extract and run `setup.bat`)
+            - **macOS**: `orvo-macos-universal.tar.gz` (extract and run `./setup_macos.sh`)
+            - **Linux**: `orvo-linux-x64.tar.gz` (extract and run `./setup_linux.sh`)
+          files: |
+            dist/orvo-windows-x64.zip
+            dist/orvo-macos-universal.tar.gz
+            dist/orvo-linux-x64.tar.gz
+          draft: false
+          prerelease: false

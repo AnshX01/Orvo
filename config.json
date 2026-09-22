@@ -1,0 +1,50 @@
+{
+    "hotkey": {
+        "key": "<alt>+<grave>",
+        "mode": "toggle",
+        "debounce_ms": 150
+    },
+    "audio": {
+        "device_index": null,
+        "sample_rate": 16000,
+        "channels": 1,
+        "sound_effects": false,
+        "silence_trim": true,
+        "silence_threshold_db": -48.0,
+        "pad_duration_ms": 350,
+        "normalize_audio": true
+    },
+    "model": {
+        "backend": "local",
+        "local_model": "base.en",
+        "compute_type": "int8",
+        "device": "auto",
+        "beam_size": 5,
+        "initial_prompt": "Orvo dictation: accurate transcription of spoken English into clear, coherent, well-structured sentences with proper grammar and punctuation.",
+        "vad_filter": false,
+        "groq_api_key": "",
+        "groq_model": "whisper-large-v3-turbo",
+        "openai_api_key": "",
+        "openai_model": "whisper-1",
+        "language": "en"
+    },
+    "text": {
+        "auto_capitalize": true,
+        "auto_punctuate": true,
+        "smart_sentence_formation": true,
+        "remove_fillers": true,
+        "fix_disfluencies": true,
+        "voice_commands": true,
+        "paste_delay_ms": 60,
+        "fallback_to_typing": true
+    },
+    "ui": {
+        "show_hud": true,
+        "hud_style": "square",
+        "hud_position": "bottom_right",
+        "sound_feedback": false,
+        "tray_notifications": false,
+        "history_limit": 100,
+        "start_minimized_to_tray": true
+    }
+}
