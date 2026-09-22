@@ -183,6 +183,264 @@ Comment=Universal Voice Dictation
 
 
 # =============================================================================
+# Application Icons & OS Search Shortcuts
+# =============================================================================
+
+def ensure_app_icon() -> bool:
+    """
+    Ensures assets/icon.ico and assets/icon.png exist.
+    Generates them dynamically with Pillow if missing.
+    """
+    assets_dir = os.path.join(ROOT_DIR, "assets")
+    ico_path = os.path.join(assets_dir, "icon.ico")
+    png_path = os.path.join(assets_dir, "icon.png")
+
+    if os.path.isfile(ico_path) and os.path.isfile(png_path):
+        return True
+
+    try:
+        from PIL import Image, ImageDraw
+        os.makedirs(assets_dir, exist_ok=True)
+        size = 256
+        img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        d = ImageDraw.Draw(img)
+
+        # Squircle badge
+        pad = 12
+        radius = 54
+        d.rounded_rectangle(
+            [pad, pad, size - pad, size - pad],
+            radius=radius,
+            fill=(28, 30, 38, 255),
+            outline=(100, 116, 139, 255),
+            width=6,
+        )
+
+        # Microphone capsule
+        cw, ch = 46, 76
+        cx = size // 2
+        cy_top = 62
+        d.rounded_rectangle(
+            [cx - cw // 2, cy_top, cx + cw // 2, cy_top + ch],
+            radius=23,
+            fill=(248, 250, 252, 255),
+        )
+
+        # Microphone cradle arc
+        arc_pad = 16
+        d.arc(
+            [cx - cw // 2 - arc_pad, cy_top + 28, cx + cw // 2 + arc_pad, cy_top + ch + 18],
+            start=0,
+            end=180,
+            fill=(248, 250, 252, 255),
+            width=10,
+        )
+
+        # Stand & Base
+        d.line([cx, cy_top + ch + 18, cx, cy_top + ch + 48], fill=(248, 250, 252, 255), width=10)
+        d.line([cx - 36, cy_top + ch + 48, cx + 36, cy_top + ch + 48], fill=(248, 250, 252, 255), width=10)
+
+        img.save(png_path, format="PNG")
+        img.save(ico_path, format="ICO", sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+        logger.info("Generated high-resolution Orvo application icons in assets/")
+        return True
+    except Exception as exc:
+        logger.warning("Could not generate app icon: %s", exc)
+        return False
+
+
+def _create_windows_lnk(lnk_path: str, target: str, args: str, workdir: str, icon: str, desc: str) -> bool:
+    """Helper to create Windows .lnk shortcut with multiple robust fallbacks."""
+    # 1. win32com
+    try:
+        import win32com.client
+        shell = win32com.client.Dispatch("WScript.Shell")
+        shortcut = shell.CreateShortCut(lnk_path)
+        shortcut.TargetPath = target
+        shortcut.Arguments = args
+        shortcut.WorkingDirectory = workdir
+        if os.path.isfile(icon):
+            shortcut.IconLocation = f"{icon},0"
+        shortcut.Description = desc
+        shortcut.Save()
+        if os.path.isfile(lnk_path):
+            return True
+    except Exception as e:
+        logger.debug("win32com shortcut creation failed: %s", e)
+
+    # 2. PowerShell
+    try:
+        import subprocess
+        ps_cmd = (
+            f'$ws = New-Object -ComObject WScript.Shell; '
+            f'$s = $ws.CreateShortcut("{lnk_path}"); '
+            f'$s.TargetPath = "{target}"; '
+            f'$s.Arguments = \'{args}\'; '
+            f'$s.WorkingDirectory = "{workdir}"; '
+            f'$s.IconLocation = "{icon},0"; '
+            f'$s.Description = "{desc}"; '
+            f'$s.Save()'
+        )
+        res = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", ps_cmd],
+            capture_output=True,
+            text=True,
+        )
+        if os.path.isfile(lnk_path):
+            return True
+    except Exception as e:
+        logger.debug("PowerShell shortcut creation failed: %s", e)
+
+    # 3. VBScript via cscript
+    try:
+        import subprocess
+        vbs_content = (
+            'Set ws = CreateObject("WScript.Shell")\n'
+            f'Set lnk = ws.CreateShortcut("{lnk_path}")\n'
+            f'lnk.TargetPath = "{target}"\n'
+            f'lnk.Arguments = "{args}"\n'
+            f'lnk.WorkingDirectory = "{workdir}"\n'
+            f'lnk.IconLocation = "{icon},0"\n'
+            f'lnk.Description = "{desc}"\n'
+            'lnk.Save\n'
+        )
+        tmp_vbs = os.path.join(ROOT_DIR, "_tmp_lnk.vbs")
+        with open(tmp_vbs, "w", encoding="utf-8") as f:
+            f.write(vbs_content)
+        subprocess.run(["cscript.exe", "//Nologo", tmp_vbs], check=True, capture_output=True)
+        if os.path.isfile(tmp_vbs):
+            os.remove(tmp_vbs)
+        return os.path.isfile(lnk_path)
+    except Exception as e:
+        logger.error("All Windows shortcut creation attempts failed for %s: %s", lnk_path, e)
+        return False
+
+
+def _install_windows_shortcuts() -> bool:
+    appdata = os.environ.get("APPDATA", "")
+    userprofile = os.environ.get("USERPROFILE", "")
+    icon_path = os.path.join(ROOT_DIR, "assets", "icon.ico")
+    vbs_path = os.path.join(ROOT_DIR, "run_silent.vbs")
+
+    target = "wscript.exe"
+    args = f'"{vbs_path}"'
+    workdir = ROOT_DIR
+    desc = "Orvo - Voice Dictation Everywhere"
+
+    installed_any = False
+
+    # 1. Start Menu (Indexed by Windows Search)
+    start_menu_dir = os.path.join(appdata, "Microsoft", "Windows", "Start Menu", "Programs")
+    if os.path.isdir(start_menu_dir):
+        start_menu_lnk = os.path.join(start_menu_dir, "Orvo.lnk")
+        if _create_windows_lnk(start_menu_lnk, target, args, workdir, icon_path, desc):
+            logger.info("Installed Start Menu shortcut for Windows Search: %s", start_menu_lnk)
+            installed_any = True
+
+    # 2. Desktop Shortcut
+    desktop_dir = os.path.join(userprofile, "Desktop")
+    if os.path.isdir(desktop_dir):
+        desktop_lnk = os.path.join(desktop_dir, "Orvo.lnk")
+        if _create_windows_lnk(desktop_lnk, target, args, workdir, icon_path, desc):
+            logger.info("Installed Desktop shortcut: %s", desktop_lnk)
+            installed_any = True
+
+    return installed_any
+
+
+def _install_macos_app_bundle() -> bool:
+    apps_dir = os.path.expanduser("~/Applications")
+    os.makedirs(apps_dir, exist_ok=True)
+    app_path = os.path.join(apps_dir, "Orvo.app")
+    macos_dir = os.path.join(app_path, "Contents", "MacOS")
+    resources_dir = os.path.join(app_path, "Contents", "Resources")
+    os.makedirs(macos_dir, exist_ok=True)
+    os.makedirs(resources_dir, exist_ok=True)
+
+    launcher_script = os.path.join(macos_dir, "Orvo")
+    run_mac_path = os.path.join(ROOT_DIR, "run_mac.sh")
+    with open(launcher_script, "w", encoding="utf-8") as f:
+        f.write(f"""#!/bin/bash
+exec /bin/bash "{run_mac_path}"
+""")
+    os.chmod(launcher_script, 0o755)
+
+    plist_path = os.path.join(app_path, "Contents", "Info.plist")
+    with open(plist_path, "w", encoding="utf-8") as f:
+        f.write("""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>Orvo</string>
+    <key>CFBundleDisplayName</key>
+    <string>Orvo</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.orvo.dictation</string>
+    <key>CFBundleVersion</key>
+    <string>1.0.1</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleExecutable</key>
+    <string>Orvo</string>
+    <key>LSUIElement</key>
+    <true/>
+</dict>
+</plist>
+""")
+    logger.info("Installed macOS Application bundle for Spotlight: %s", app_path)
+    return True
+
+
+def _install_linux_desktop_entry() -> bool:
+    apps_dir = os.path.expanduser("~/.local/share/applications")
+    os.makedirs(apps_dir, exist_ok=True)
+    desktop_path = os.path.join(apps_dir, "orvo.desktop")
+    run_linux_path = os.path.join(ROOT_DIR, "run_linux.sh")
+    icon_path = os.path.join(ROOT_DIR, "assets", "icon.png")
+
+    content = f"""[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Orvo
+Comment=Universal Voice Dictation
+Exec=/bin/bash "{run_linux_path}"
+Icon={icon_path}
+Terminal=false
+Categories=Utility;Audio;
+StartupNotify=false
+"""
+    with open(desktop_path, "w", encoding="utf-8") as f:
+        f.write(content)
+    os.chmod(desktop_path, 0o755)
+
+    try:
+        import subprocess
+        subprocess.run(["update-desktop-database", apps_dir], capture_output=True)
+    except Exception:
+        pass
+
+    logger.info("Installed Linux desktop entry for application search: %s", desktop_path)
+    return True
+
+
+def install_app_shortcuts() -> bool:
+    """
+    Installs OS-native application search and launcher shortcuts:
+    - Windows: Start Menu & Desktop shortcuts for Windows Search.
+    - macOS: ~/Applications/Orvo.app bundle for Spotlight.
+    - Linux: ~/.local/share/applications/orvo.desktop for application launchers.
+    """
+    ensure_app_icon()
+    if sys.platform == "win32":
+        return _install_windows_shortcuts()
+    elif sys.platform == "darwin":
+        return _install_macos_app_bundle()
+    else:
+        return _install_linux_desktop_entry()
+
+
+# =============================================================================
 # Public Unified API
 # =============================================================================
 
@@ -233,9 +491,21 @@ if __name__ == "__main__":
     parser.add_argument("--enable", action="store_true", help="Enable open on startup")
     parser.add_argument("--disable", action="store_true", help="Disable open on startup")
     parser.add_argument("--status", action="store_true", help="Check open on startup status")
+    parser.add_argument("--install-shortcuts", action="store_true", help="Install Start Menu / Application search shortcuts")
+    parser.add_argument("--ensure-icon", action="store_true", help="Ensure app icons are generated")
     args = parser.parse_args()
 
-    if args.enable:
+    if args.install_shortcuts:
+        if install_app_shortcuts():
+            print("Successfully installed application search shortcuts.")
+        else:
+            print("Failed to install application search shortcuts.")
+    elif args.ensure_icon:
+        if ensure_app_icon():
+            print("Successfully ensured application icons.")
+        else:
+            print("Failed to generate application icons.")
+    elif args.enable:
         if enable_startup():
             print("Successfully enabled open on startup.")
         else:
@@ -248,3 +518,4 @@ if __name__ == "__main__":
     else:
         status = is_startup_enabled()
         print(f"Open on startup is currently: {'ENABLED' if status else 'DISABLED'}")
+

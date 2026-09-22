@@ -67,7 +67,12 @@ echo "[INFO] Installing project dependencies..."
 "$VENV_DIR/bin/python" -m pip install --upgrade pip
 "$VENV_DIR/bin/python" -m pip install -r requirements.txt
 
-# 5. Open on Login Prompt
+# 5. Install Desktop Application Search Entry
+echo ""
+echo "[INFO] Registering Orvo in Desktop Application Launcher..."
+"$VENV_DIR/bin/python" src/startup_manager.py --install-shortcuts
+
+# 6. Open on Login Prompt
 echo ""
 echo "==================================================="
 echo "  Open on Login (Linux Autostart)"

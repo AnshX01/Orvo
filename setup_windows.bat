@@ -109,6 +109,11 @@ if !errorlevel! neq 0 (
     exit /b 1
 )
 
+:: Install application search & Start Menu shortcuts
+echo.
+echo [INFO] Registering Orvo in Windows Search and Start Menu...
+"!VENV_DIR!\Scripts\python.exe" src\startup_manager.py --install-shortcuts
+
 :: Startup configuration
 echo.
 echo ===================================================

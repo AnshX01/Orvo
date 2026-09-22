@@ -14,6 +14,8 @@ from src.startup_manager import (
     get_windows_launch_command,
     get_macos_launch_command,
     get_linux_launch_command,
+    ensure_app_icon,
+    install_app_shortcuts,
 )
 from src.single_instance import SingleInstanceLock
 
@@ -28,6 +30,13 @@ class TestStartupManager(unittest.TestCase):
         self.assertIn("run_silent.vbs", win_cmd)
         self.assertTrue(mac_cmd.endswith("run_mac.sh"))
         self.assertTrue(linux_cmd.endswith("run_linux.sh"))
+
+    def test_ensure_app_icon_and_shortcuts(self):
+        """Verify app icons and search shortcuts can be generated and verified."""
+        self.assertTrue(ensure_app_icon())
+        # Verify install_app_shortcuts runs without unhandled exceptions
+        res = install_app_shortcuts()
+        self.assertIsInstance(res, bool)
 
     @patch("src.startup_manager._is_windows_startup_enabled", return_value=True)
     def test_is_startup_enabled_windows(self, mock_win):

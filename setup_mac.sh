@@ -49,7 +49,12 @@ echo "[INFO] Installing project dependencies..."
 "$VENV_DIR/bin/python" -m pip install --upgrade pip
 "$VENV_DIR/bin/python" -m pip install -r requirements.txt
 
-# 4. Open on Login Prompt (macOS LaunchAgent)
+# 4. Install Spotlight & Applications Shortcut
+echo ""
+echo "[INFO] Registering Orvo in macOS Applications for Spotlight..."
+"$VENV_DIR/bin/python" src/startup_manager.py --install-shortcuts
+
+# 5. Open on Login Prompt (macOS LaunchAgent)
 echo ""
 echo "==================================================="
 echo "  Open on Login (macOS LaunchAgent)"

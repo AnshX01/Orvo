@@ -25,7 +25,7 @@ jobs:
       - name: Prepare Windows Package
         run: |
           mkdir -p dist/orvo-windows
-          cp -r src tests config.json requirements.txt main.py setup_windows.bat run_windows.bat run_silent.vbs README.md LICENSE .gitignore dist/orvo-windows/ 2>/dev/null || cp -r src tests config.json requirements.txt main.py setup_windows.bat run_windows.bat run_silent.vbs README.md .gitignore dist/orvo-windows/
+          cp -r assets src tests config.json requirements.txt main.py setup_windows.bat run_windows.bat run_silent.vbs README.md LICENSE .gitignore dist/orvo-windows/ 2>/dev/null || cp -r assets src tests config.json requirements.txt main.py setup_windows.bat run_windows.bat run_silent.vbs README.md .gitignore dist/orvo-windows/
           cd dist
           zip -r orvo-windows-x64.zip orvo-windows
           cd ..
@@ -33,7 +33,7 @@ jobs:
       - name: Prepare macOS Package
         run: |
           mkdir -p dist/orvo-macos
-          cp -r src tests config.json requirements.txt main.py setup_mac.sh run_mac.sh README.md LICENSE .gitignore dist/orvo-macos/ 2>/dev/null || cp -r src tests config.json requirements.txt main.py setup_mac.sh run_mac.sh README.md .gitignore dist/orvo-macos/
+          cp -r assets src tests config.json requirements.txt main.py setup_mac.sh run_mac.sh README.md LICENSE .gitignore dist/orvo-macos/ 2>/dev/null || cp -r assets src tests config.json requirements.txt main.py setup_mac.sh run_mac.sh README.md .gitignore dist/orvo-macos/
           chmod +x dist/orvo-macos/*.sh
           cd dist
           tar -czvf orvo-macos-universal.tar.gz orvo-macos
@@ -42,7 +42,7 @@ jobs:
       - name: Prepare Linux Package
         run: |
           mkdir -p dist/orvo-linux
-          cp -r src tests config.json requirements.txt main.py setup_linux.sh run_linux.sh README.md LICENSE .gitignore dist/orvo-linux/ 2>/dev/null || cp -r src tests config.json requirements.txt main.py setup_linux.sh run_linux.sh README.md .gitignore dist/orvo-linux/
+          cp -r assets src tests config.json requirements.txt main.py setup_linux.sh run_linux.sh README.md LICENSE .gitignore dist/orvo-linux/ 2>/dev/null || cp -r assets src tests config.json requirements.txt main.py setup_linux.sh run_linux.sh README.md .gitignore dist/orvo-linux/
           chmod +x dist/orvo-linux/*.sh
           cd dist
           tar -czvf orvo-linux-x64.tar.gz orvo-linux

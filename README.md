@@ -30,9 +30,10 @@ setup_windows.bat
 The script will:
 1. Detect or configure a virtual environment (`.venv`).
 2. Install dependencies from `requirements.txt`.
-3. Prompt whether to register Orvo in Windows Task Manager Startup Apps.
-4. Pre-warm the local speech recognition model (`base.en`).
-5. Prompt to launch Orvo immediately in the background.
+3. Register application search and Start Menu shortcuts.
+4. Prompt whether to register Orvo in Windows Task Manager Startup Apps.
+5. Pre-warm the local speech recognition model (`base.en`).
+6. Prompt to launch Orvo immediately in the background.
 
 To run manually after setup:
 - Background mode (recommended): double-click `run_windows.bat`, `run_silent.vbs`, or execute `pythonw main.py`.
@@ -44,7 +45,7 @@ Run the single automated setup script:
 chmod +x setup_mac.sh
 ./setup_mac.sh
 ```
-The script configures the virtual environment, installs dependencies, pre-warms the model, and prompts to configure Open on Login via LaunchAgents.
+The script configures the virtual environment, installs dependencies, registers the application for Spotlight search, pre-warms the model, and prompts to configure Open on Login via LaunchAgents.
 
 *Note on macOS Permissions:*
 Grant Accessibility permissions to your Terminal/Python application under `System Settings -> Privacy & Security -> Accessibility` to allow global hotkey detection and text insertion.
@@ -64,7 +65,7 @@ Run the single automated setup script:
 chmod +x setup_linux.sh
 ./setup_linux.sh
 ```
-The script configures the virtual environment, installs dependencies, pre-warms the model, and prompts to configure desktop autostart.
+The script configures the virtual environment, installs dependencies, registers the desktop entry for application search, pre-warms the model, and prompts to configure desktop autostart.
 
 To run manually in the background:
 ```bash
@@ -82,6 +83,24 @@ To run manually in the background:
 - **Push-to-Talk Mode**:
   - Hold `Alt + ` ` while speaking, release to transcribe and paste.
   - Mode can be switched via the system tray menu or in `config.json`.
+
+---
+
+## System Search & Desktop Integration
+
+- **Windows**: Search `Orvo` in the Start Menu to launch silently in the background. Shortcut is located at `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Orvo.lnk`.
+- **macOS**: Search `Orvo` in Spotlight (`Cmd + Space`) from `~/Applications/Orvo.app`.
+- **Linux**: Search `Orvo` in application menus from `~/.local/share/applications/orvo.desktop`.
+- **Single Instance**: Running Orvo when it is already active safely detects the existing background process and exits cleanly.
+
+---
+
+## Startup Configuration
+
+- **Windows**: Registered in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, visible in Windows Task Manager Startup Apps.
+- **macOS**: Registered in `~/Library/LaunchAgents/com.orvo.dictation.plist`.
+- **Linux**: Registered in `~/.config/autostart/orvo.desktop`.
+- **System Tray Toggle**: Right-click the Orvo tray icon and toggle `Start with Windows` / `Start on Login` anytime.
 
 ---
 
