@@ -236,9 +236,9 @@ class TranscriberManager:
                 )
                 audio_data = audio_data[-max_samples:]
 
-            # Silence check: calculate RMS energy (threshold lowered to 0.0005 to preserve soft speech)
+            # Silence check: calculate RMS energy (threshold 1e-5 to only suppress true digital silence)
             rms = float(np.sqrt(np.mean(audio_data ** 2))) if len(audio_data) > 0 else 0.0
-            if rms < 0.0005:  # Pure ambient digital silence
+            if rms < 1e-5:  # Pure ambient digital silence
                 logger.debug(f"Suppressed transcription: pure silence detected (RMS={rms:.6f}).")
                 return ""
 
@@ -301,6 +301,7 @@ class TranscriberManager:
                 "beam_size": beam_size,
                 "vad_filter": vad_filter,
                 "condition_on_previous_text": False,
+                "no_speech_threshold": 0.85,
             }
             if vad_filter:
                 transcribe_kwargs["vad_parameters"] = dict(min_silence_duration_ms=500, speech_pad_ms=400)

@@ -718,8 +718,7 @@ class HudOverlay:
         def _run_history():
             try:
                 from src.history_dialog import HistoryDialog
-                dlg = HistoryDialog(parent=None, history_manager=history_manager)
-                dlg.show()
+                HistoryDialog.show(parent=None, history_manager=history_manager)
             except Exception as exc:
                 print(f"[HudOverlay] Error opening history dialog: {exc}")
 

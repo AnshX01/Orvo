@@ -212,7 +212,7 @@ class AudioRecorder:
         silence_trim: bool = True,
         silence_threshold_db: float = -40.0,
         normalize_audio: bool = True,
-        min_duration_sec: float = 0.2,
+        min_duration_sec: float = 0.1,
         pre_roll_sec: float = 0.25,
         block_size: int = 1024,
     ):
@@ -470,6 +470,10 @@ class AudioRecorder:
             Returns empty array np.zeros(0, dtype=np.float32) if recording
             was pure silence or shorter than min_duration_sec.
         """
+        # Short post-roll drain (120ms) to ensure soundcard buffer delivers the final trailing syllable
+        if self._is_recording:
+            time.sleep(0.12)
+
         with self._lock:
             if not self._is_recording:
                 logger.warning("AudioRecorder: stop_recording called while not recording.")
@@ -496,35 +500,34 @@ class AudioRecorder:
         duration = len(raw_audio) / self.sample_rate
         logger.info("Raw audio captured: %.2f seconds (%d samples)", duration, len(raw_audio))
 
-        # Check raw minimum duration
-        if duration < self.min_duration_sec:
+        # Check raw minimum duration (at least 100ms)
+        min_threshold = min(0.1, self.min_duration_sec)
+        if duration < min_threshold:
             logger.info("Audio duration (%.2fs) below minimum threshold (%.2fs), discarding.",
-                        duration, self.min_duration_sec)
+                        duration, min_threshold)
             return np.zeros(0, dtype=np.float32)
 
         # Apply silence trimming if enabled
         processed = raw_audio
         if self.silence_trim:
-            processed = trim_silence(
-                processed,
+            trimmed = trim_silence(
+                raw_audio,
                 sample_rate=self.sample_rate,
                 threshold_db=getattr(self, "silence_threshold_db", -54.0),
                 frame_duration_ms=20,
                 pad_duration_ms=getattr(self, "pad_duration_ms", 350)
             )
-            trimmed_duration = len(processed) / self.sample_rate
+            trimmed_duration = len(trimmed) / self.sample_rate
             logger.info("Trimmed silence: %.2f seconds remaining (%d samples)",
-                        trimmed_duration, len(processed))
+                        trimmed_duration, len(trimmed))
 
-            # If trimmed audio is shorter than minimum speech duration, verify raw RMS before discarding
-            if trimmed_duration < self.min_duration_sec:
-                raw_rms = float(np.sqrt(np.mean(raw_audio ** 2))) if len(raw_audio) > 0 else 0.0
-                if raw_rms >= 0.0005:
-                    logger.info("Trimmed below min duration, but raw audio has speech energy (RMS=%.5f); retaining raw audio.", raw_rms)
-                    processed = raw_audio
-                else:
-                    logger.info("Audio below minimum duration and energy, discarding.")
-                    return np.zeros(0, dtype=np.float32)
+            # If trimmed audio has enough samples, use it; otherwise fallback to raw audio
+            # so soft speech or laptop mics are never mistakenly discarded
+            if trimmed_duration >= min_threshold:
+                processed = trimmed
+            else:
+                logger.info("Trimmed silence below threshold (%.2fs); falling back to raw audio.", trimmed_duration)
+                processed = raw_audio
 
         # Apply peak normalization if enabled
         if self.normalize_audio:

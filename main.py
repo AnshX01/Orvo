@@ -432,12 +432,14 @@ class OrvoApp:
 
     def _on_tray_history_clicked(self) -> None:
         logger.info("Opening dictation history dialog...")
-        if self.hud_overlay:
-            self.hud_overlay.open_history()
-        else:
-            def _launch():
-                HistoryDialog.show()
-            threading.Thread(target=_launch, daemon=True).start()
+        def _launch():
+            try:
+                from src.history_dialog import HistoryDialog
+                HistoryDialog.show(parent=None, history_manager=self.history_manager)
+            except Exception as exc:
+                logger.error("Error opening history dialog: %s", exc)
+
+        threading.Thread(target=_launch, daemon=True, name="HistoryDialogThread").start()
 
     # -------------------------------------------------------------------------
     # Hot-Reloading Watcher Loop

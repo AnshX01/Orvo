@@ -212,6 +212,20 @@ class TrayApp:
             menu=self._build_menu(),
         )
 
+        # On Windows, pystray by default only shows menu on right-click (WM_RBUTTONUP).
+        # Intercept WM_LBUTTONUP so left-clicking the tray icon also opens the context menu immediately.
+        if sys.platform == "win32" and hasattr(self.icon, "_message_handlers"):
+            orig_notify = getattr(self.icon, "_on_notify", None)
+            if orig_notify:
+                def _patched_notify(wparam, lparam):
+                    if lparam == 0x0202:  # WM_LBUTTONUP -> route to WM_RBUTTONUP (0x0205)
+                        lparam = 0x0205
+                    return orig_notify(wparam, lparam)
+                self.icon._on_notify = _patched_notify
+                for k, v in list(self.icon._message_handlers.items()):
+                    if getattr(v, "__name__", "") == "_on_notify":
+                        self.icon._message_handlers[k] = _patched_notify
+
     # =========================================================================
     # Context Menu Construction
     # =========================================================================
@@ -415,41 +429,44 @@ class TrayApp:
             return False
 
     def open_history(self) -> None:
-        """Opens the dictation history dialog."""
+        """Opens the dictation history dialog safely in a dedicated thread."""
         if self.on_history_clicked:
             self.on_history_clicked()
             return
-        # If no specific handler, try HudOverlay open_history or HistoryDialog.show
-        try:
-            from src.hud_overlay import _global_hud
-            if _global_hud:
-                _global_hud.open_history()
-                return
-        except Exception:
-            pass
-
-        # Fallback to standalone dialog
         def _launch():
-            HistoryDialog.show()
-        threading.Thread(target=_launch, daemon=True).start()
+            try:
+                from src.history_dialog import HistoryDialog
+                HistoryDialog.show(parent=None)
+            except Exception as exc:
+                print(f"[TrayApp] Error opening history dialog: {exc}")
+
+        threading.Thread(target=_launch, daemon=True, name="HistoryDialogThread").start()
 
     def open_settings(self) -> None:
-        """Opens config.json in default system text editor."""
+        """Opens config.json in default system text editor with notepad fallback."""
         cfg_path = CONFIG_FILE_PATH
         if not os.path.exists(cfg_path):
             ConfigManager().save()
         try:
             if sys.platform == "win32":
-                os.startfile(cfg_path)
+                try:
+                    os.startfile(cfg_path)
+                except Exception:
+                    subprocess.Popen(["notepad.exe", cfg_path])
             elif sys.platform == "darwin":
-                subprocess.run(["open", cfg_path])
+                subprocess.Popen(["open", cfg_path])
             else:
-                subprocess.run(["xdg-open", cfg_path])
+                subprocess.Popen(["xdg-open", cfg_path])
         except Exception as e:
+            if sys.platform == "win32":
+                try:
+                    subprocess.Popen(["notepad.exe", cfg_path])
+                except Exception:
+                    pass
             print(f"[TrayApp] Error launching settings: {e}")
 
     def open_logs(self) -> None:
-        """Opens application logs directory or log file."""
+        """Opens application logs directory or log file with notepad/explorer fallback."""
         log_dir = os.path.abspath(
             os.path.join(os.path.dirname(CONFIG_FILE_PATH), "..", "logs")
         )
@@ -458,12 +475,23 @@ class TrayApp:
         target = log_file if os.path.exists(log_file) else log_dir
         try:
             if sys.platform == "win32":
-                os.startfile(target)
+                try:
+                    os.startfile(target)
+                except Exception:
+                    if os.path.isfile(target):
+                        subprocess.Popen(["notepad.exe", target])
+                    else:
+                        subprocess.Popen(["explorer.exe", target])
             elif sys.platform == "darwin":
-                subprocess.run(["open", target])
+                subprocess.Popen(["open", target])
             else:
-                subprocess.run(["xdg-open", target])
+                subprocess.Popen(["xdg-open", target])
         except Exception as e:
+            if sys.platform == "win32":
+                try:
+                    subprocess.Popen(["explorer.exe", log_dir])
+                except Exception:
+                    pass
             print(f"[TrayApp] Error opening logs: {e}")
 
     def refresh_menu(self) -> None:

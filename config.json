@@ -20,7 +20,7 @@
         "compute_type": "int8",
         "device": "cpu",
         "beam_size": 5,
-        "initial_prompt": "Orvo dictation: accurate transcription of spoken English into clear, coherent, well-structured sentences with proper grammar and punctuation.",
+        "initial_prompt": "Hello, welcome to Orvo voice dictation. Please speak clearly, with proper punctuation.",
         "vad_filter": false,
         "groq_api_key": "",
         "groq_model": "whisper-large-v3-turbo",

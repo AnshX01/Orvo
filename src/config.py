@@ -111,7 +111,7 @@ DEFAULT_CONFIG_DOCUMENTED = """{
         // Beam search size (5 provides superior sentence accuracy and context)
         "beam_size": 5,
         // Initial conditioning prompt to guide sentence formatting and coherence
-        "initial_prompt": "Orvo dictation: accurate transcription of spoken English into clear, coherent, well-structured sentences with proper grammar and punctuation.",
+        "initial_prompt": "Hello, welcome to Orvo voice dictation. Please speak clearly, with proper punctuation.",
         // Built-in VAD filter in faster-whisper (false allows full speech capture)
         "vad_filter": false,
         // Cloud API keys
