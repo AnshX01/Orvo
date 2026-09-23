@@ -11,7 +11,7 @@ Orvo is a lightweight, low-latency, system-wide voice dictation application for 
 - **Minimal Status Overlay**: Floating dark graphite status squircle with subtle grey interior accent, smoothly pulsing borders, wave microphone lines during listening, a 3-dot cascading bounce during processing, and an inward merge into a single dot on completion. Runs at the display's native refresh rate using 32-bit per-pixel alpha blending without stealing window focus.
 - **Atomic Clipboard Injection**: Preserves existing clipboard contents (text, Unicode, and bitmap images). Pastes transcribed text into the focused window and restores the original clipboard within milliseconds, with simulated typing fallback.
 - **Open on Startup**: Integrated into Windows Task Manager Startup Apps (HKCU Run key), macOS LaunchAgents, and Linux autostart. Configurable during setup and toggleable in real time via the system tray menu.
-- **Single-Instance Protection**: Opening Orvo while it is already running safely detects the existing background process and exits without opening duplicate instances or conflicting with audio hardware.
+- **Single-Instance Protection & Auto-Wake**: Opening Orvo while it is already running safely detects the existing background process, signals the active instance to pulse on-screen and notify the system tray, and prevents duplicate instances or audio conflicts.
 - **Silent Operation**: Audio chimes are disabled by default for silent, frictionless operation.
 
 ---
@@ -36,7 +36,7 @@ The script will:
 6. Prompt to launch Orvo immediately in the background.
 
 To run manually after setup:
-- Background mode (recommended): double-click `run_windows.bat`, `run_silent.vbs`, or execute `pythonw main.py`.
+- Background mode (recommended): launch `Orvo.exe`, double-click `run_windows.bat`, or click the `Orvo` Desktop / Start Menu shortcut.
 - Terminal / debug mode: run `run_windows.bat --console` or `python main.py`.
 
 ### macOS

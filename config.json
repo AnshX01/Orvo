@@ -1,7 +1,7 @@
 {
     "hotkey": {
         "key": "<alt>+<grave>",
-        "mode": "push_to_talk",
+        "mode": "toggle",
         "debounce_ms": 150
     },
     "audio": {
