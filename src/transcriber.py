@@ -22,9 +22,13 @@ from src.config import AppConfig, get_config
 
 logger = logging.getLogger("Orvo.Transcriber")
 if not logger.handlers:
-    handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter("[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s"))
-    logger.addHandler(handler)
+    try:
+        if sys.stderr is not None and hasattr(sys.stderr, "write"):
+            handler = logging.StreamHandler(sys.stderr)
+            handler.setFormatter(logging.Formatter("[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s"))
+            logger.addHandler(handler)
+    except Exception:
+        pass
     logger.setLevel(logging.INFO)
 
 from src.sentence_former import SentenceFormer

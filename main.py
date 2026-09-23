@@ -15,6 +15,12 @@ import threading
 import time
 from typing import Optional
 
+# Guard against None stdout/stderr when running as windowless process (e.g. pythonw.exe)
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w", encoding="utf-8")
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w", encoding="utf-8")
+
 # Ensure project root is in sys.path
 _PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
 if _PROJECT_ROOT not in sys.path:
@@ -55,17 +61,21 @@ def setup_logging() -> logging.Logger:
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
 
-    # Console Handler
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(logging.INFO)
-    console_handler.setFormatter(formatter)
-
     # Root / App Logger
     logger = logging.getLogger("Orvo")
     logger.setLevel(logging.DEBUG)
     logger.handlers.clear()
     logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
+
+    # Console Handler (only if stdout is connected and non-null)
+    try:
+        if sys.stdout is not None and hasattr(sys.stdout, "write"):
+            console_handler = logging.StreamHandler(sys.stdout)
+            console_handler.setLevel(logging.INFO)
+            console_handler.setFormatter(formatter)
+            logger.addHandler(console_handler)
+    except Exception:
+        pass
 
     # Reduce noisy external libraries
     logging.getLogger("urllib3").setLevel(logging.WARNING)

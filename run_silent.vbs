@@ -17,4 +17,5 @@ End If
 
 ' Run pythonw.exe main.py with window style 0 (completely hidden) without waiting
 WshShell.CurrentDirectory = strScriptDir
-WshShell.Run """" & strPythonW & """ """ & strMainPy & """", 0, False
+WshShell.Run "cmd.exe /c """"" & strPythonW & """ """ & strMainPy & """""", 0, False
+
