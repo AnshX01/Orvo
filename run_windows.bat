@@ -17,8 +17,11 @@ if "%~1"=="-c" goto :console
 if "%~1"=="console" goto :console
 
 :: Default: Launch silently in the background with tray icon and status HUD
-echo Starting Orvo in the background...
-start "" wscript.exe run_silent.vbs
+if exist "Orvo.exe" (
+    start "" Orvo.exe
+) else (
+    start "" wscript.exe run_silent.vbs
+)
 echo Orvo is running in the background. Press Alt + ` to dictate.
 timeout /t 2 >nul
 exit /b 0

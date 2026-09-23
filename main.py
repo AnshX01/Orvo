@@ -173,6 +173,9 @@ class OrvoApp:
         # Hot-reloading watcher thread
         self._watcher_thread: Optional[threading.Thread] = None
 
+        # IPC single-instance server
+        self._start_ipc_server()
+
     # -------------------------------------------------------------------------
     # State Machine Transitions
     # -------------------------------------------------------------------------
@@ -468,6 +471,75 @@ class OrvoApp:
         self._watcher_thread.start()
 
     # -------------------------------------------------------------------------
+    # Single-Instance IPC Server & Remote Control
+    # -------------------------------------------------------------------------
+
+    def _start_ipc_server(self) -> None:
+        """Starts a lightweight localhost TCP server to receive commands from subsequent launches."""
+        def _ipc_worker():
+            import socket
+            server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                server.bind(("127.0.0.1", 48721))
+                server.listen(5)
+                server.settimeout(1.0)
+            except Exception as e:
+                logger.debug("Could not bind IPC port 48721: %s", e)
+                return
+
+            while not self._stop_event.is_set():
+                try:
+                    conn, _ = server.accept()
+                except socket.timeout:
+                    continue
+                except Exception:
+                    break
+
+                try:
+                    with conn:
+                        data = conn.recv(1024).decode("utf-8").strip()
+                        if data == "PING":
+                            conn.sendall(b"PONG\n")
+                        elif data == "WAKE_UP":
+                            self._handle_wake_up()
+                            conn.sendall(b"OK\n")
+                        elif data in ("QUIT", "STOP"):
+                            conn.sendall(b"OK\n")
+                            threading.Thread(target=self.stop, daemon=True).start()
+                        else:
+                            conn.sendall(b"UNKNOWN\n")
+                except Exception as err:
+                    logger.debug("IPC connection error: %s", err)
+
+            try:
+                server.close()
+            except Exception:
+                pass
+
+        t = threading.Thread(target=_ipc_worker, daemon=True, name="IPCServerThread")
+        t.start()
+
+    def _handle_wake_up(self) -> None:
+        """Brings Orvo to the user's attention when launched again."""
+        logger.info("Wake-up signal received from another launch attempt.")
+        if self.hud_overlay and self.config.ui.show_hud:
+            try:
+                self.hud_overlay.show_success("Orvo is active • Press Alt+` to dictate", duration_ms=2500)
+            except Exception as e:
+                logger.debug("Error waking up HUD: %s", e)
+
+        # Notify tray balloon so user knows where the icon is
+        if self.tray_app and hasattr(self.tray_app, "icon") and self.tray_app.icon:
+            try:
+                self.tray_app.icon.notify(
+                    "Orvo is running in your taskbar system tray.\n(If hidden, click the ^ arrow on your taskbar)",
+                    "Orvo is Active"
+                )
+            except Exception as e:
+                logger.debug("Error showing tray wake-up notification: %s", e)
+
+    # -------------------------------------------------------------------------
     # Lifecycle Control
     # -------------------------------------------------------------------------
 
@@ -496,9 +568,19 @@ class OrvoApp:
         # Show brief startup HUD confirmation so the user visually sees Orvo is ready
         if self.hud_overlay and self.config.ui.show_hud:
             try:
-                self.hud_overlay.show_success(duration_ms=1800)
+                self.hud_overlay.show_success("Orvo is active • Press Alt+` to dictate", duration_ms=2000)
             except Exception as exc:
                 logger.debug("Startup HUD visual confirmation: %s", exc)
+
+        # Notify tray balloon so user easily discovers the icon
+        if self.tray_app and hasattr(self.tray_app, "icon") and self.tray_app.icon:
+            try:
+                self.tray_app.icon.notify(
+                    "Orvo is running in your taskbar system tray.\n(If not visible, click the ^ arrow on your taskbar)",
+                    "Orvo Ready"
+                )
+            except Exception as exc:
+                logger.debug("Startup tray notification: %s", exc)
 
     def run(self) -> None:
         """Runs the application until interrupted."""
@@ -569,19 +651,32 @@ def main():
 
     lock = SingleInstanceLock()
     if not lock.acquire():
-        logger.info("Existing Orvo instance detected. Exiting new process cleanly.")
+        logger.info("Existing Orvo instance detected. Sent wake-up signal.")
         print("[Orvo] An instance of Orvo is already running in the background.")
         if sys.platform == "win32":
             try:
                 import ctypes
-                ctypes.windll.user32.MessageBoxW(
+                MB_YESNO = 0x04
+                MB_ICONINFORMATION = 0x40
+                IDYES = 6
+
+                ret = ctypes.windll.user32.MessageBoxW(
                     0,
-                    "Orvo is already running in the background.\n\n"
+                    "Orvo is already running in the background and is active on your screen.\n\n"
                     "• Press Alt + ` (Backtick) anywhere to dictate\n"
-                    "• Check your system tray (near the taskbar clock) for settings",
+                    "• The tray icon is near your clock (click the ^ arrow if hidden)\n\n"
+                    "Would you like to restart Orvo?",
                     "Orvo",
-                    0x40 | 0x10000,
+                    MB_YESNO | MB_ICONINFORMATION | 0x10000,
                 )
+                if ret == IDYES:
+                    logger.info("User requested restart. Stopping existing instance...")
+                    lock.stop_existing_instance()
+                    time.sleep(0.8)
+                    if lock.acquire():
+                        app = OrvoApp()
+                        app.run()
+                        return
             except Exception:
                 pass
         sys.exit(0)
@@ -598,6 +693,7 @@ def main():
     signal.signal(signal.SIGTERM, _sig_handler)
 
     app.run()
+
 
 
 if __name__ == "__main__":

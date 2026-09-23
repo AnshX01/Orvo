@@ -19,7 +19,10 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
 def get_windows_launch_command() -> str:
-    """Returns the Windows launch command pointing to run_silent.vbs."""
+    """Returns the Windows launch command pointing to Orvo.exe or run_silent.vbs."""
+    exe_path = os.path.join(ROOT_DIR, "Orvo.exe")
+    if os.path.isfile(exe_path):
+        return f'"{exe_path}"'
     vbs_path = os.path.join(ROOT_DIR, "run_silent.vbs")
     return f'wscript.exe "{vbs_path}"'
 
@@ -320,10 +323,16 @@ def _install_windows_shortcuts() -> bool:
     appdata = os.environ.get("APPDATA", "")
     userprofile = os.environ.get("USERPROFILE", "")
     icon_path = os.path.join(ROOT_DIR, "assets", "icon.ico")
+    exe_path = os.path.join(ROOT_DIR, "Orvo.exe")
     vbs_path = os.path.join(ROOT_DIR, "run_silent.vbs")
 
-    target = "wscript.exe"
-    args = f'"{vbs_path}"'
+    if os.path.isfile(exe_path):
+        target = exe_path
+        args = ""
+    else:
+        target = "wscript.exe"
+        args = f'"{vbs_path}"'
+
     workdir = ROOT_DIR
     desc = "Orvo - Voice Dictation Everywhere"
 

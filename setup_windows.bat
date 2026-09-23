@@ -109,6 +109,16 @@ if !errorlevel! neq 0 (
     exit /b 1
 )
 
+:: Compile native Windows launcher Orvo.exe
+echo.
+echo [INFO] Building native Orvo.exe launcher...
+if exist "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe" (
+    "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /target:winexe /win32icon:assets\icon.ico /out:Orvo.exe src\launcher.cs
+    if !errorlevel! equ 0 (
+        echo [SUCCESS] Built native Orvo.exe launcher.
+    )
+)
+
 :: Install application search & Start Menu shortcuts
 echo.
 echo [INFO] Registering Orvo in Windows Search and Start Menu...
@@ -149,7 +159,11 @@ echo.
 set "START_NOW=Y"
 set /p START_NOW="Launch Orvo in the background now? (Y/N, default Y): "
 if /i not "!START_NOW!"=="N" (
-    start "" wscript.exe run_silent.vbs
+    if exist "Orvo.exe" (
+        start "" Orvo.exe
+    ) else (
+        start "" wscript.exe run_silent.vbs
+    )
     echo [INFO] Orvo is running in the background. Enjoy dictating!
 )
 

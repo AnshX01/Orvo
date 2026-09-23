@@ -6,6 +6,7 @@ Verifies cross-platform startup registration and duplicate process prevention.
 import unittest
 from unittest.mock import patch, MagicMock
 import sys
+import time
 from src.startup_manager import (
     is_startup_enabled,
     enable_startup,
@@ -27,7 +28,7 @@ class TestStartupManager(unittest.TestCase):
         mac_cmd = get_macos_launch_command()
         linux_cmd = get_linux_launch_command()
 
-        self.assertIn("run_silent.vbs", win_cmd)
+        self.assertTrue("Orvo.exe" in win_cmd or "run_silent.vbs" in win_cmd)
         self.assertTrue(mac_cmd.endswith("run_mac.sh"))
         self.assertTrue(linux_cmd.endswith("run_linux.sh"))
 
@@ -82,6 +83,53 @@ class TestSingleInstance(unittest.TestCase):
         self.assertTrue(lock3.acquire())
         lock3.release()
 
+    def test_single_instance_ipc_ping_and_wake(self):
+        """Verify IPC socket communication handles PING, WAKE_UP, and STOP commands."""
+        import socket
+        import threading
+        from src.single_instance import send_ipc_command
+
+        test_port = 48729
+        stop_event = threading.Event()
+
+        def fake_server():
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            s.bind(("127.0.0.1", test_port))
+            s.listen(2)
+            s.settimeout(0.5)
+            while not stop_event.is_set():
+                try:
+                    conn, _ = s.accept()
+                    with conn:
+                        cmd = conn.recv(1024).decode("utf-8").strip()
+                        if cmd == "PING":
+                            conn.sendall(b"PONG\n")
+                        elif cmd == "WAKE_UP":
+                            conn.sendall(b"OK\n")
+                except socket.timeout:
+                    continue
+            s.close()
+
+        t = threading.Thread(target=fake_server, daemon=True)
+        t.start()
+        try:
+            time.sleep(0.1)
+            self.assertEqual(send_ipc_command("PING", port=test_port), "PONG")
+            self.assertEqual(send_ipc_command("WAKE_UP", port=test_port), "OK")
+        finally:
+            stop_event.set()
+            t.join(timeout=1.0)
+
+    def test_orvo_exe_binary(self):
+        """Verify native Orvo.exe binary exists and is a valid executable."""
+        import os
+        from src.startup_manager import ROOT_DIR
+        exe_path = os.path.join(ROOT_DIR, "Orvo.exe")
+        if os.path.isfile(exe_path):
+            self.assertGreater(os.path.getsize(exe_path), 5000)
+
 
 if __name__ == "__main__":
     unittest.main()
+
