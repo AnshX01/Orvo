@@ -7,6 +7,7 @@ rapid paste keystroke simulation, and resilient direct typing fallback.
 import ctypes
 from ctypes import wintypes
 import logging
+import sys
 import threading
 import time
 from dataclasses import dataclass, field
@@ -37,7 +38,11 @@ ULONG_PTR = ctypes.c_ulong if ctypes.sizeof(ctypes.c_void_p) == 4 else ctypes.c_
 INPUT_KEYBOARD = 1
 KEYEVENTF_KEYUP = 0x0002
 KEYEVENTF_UNICODE = 0x0004
+VK_SHIFT = 0x10
 VK_CONTROL = 0x11
+VK_MENU = 0x12      # Alt key
+VK_LWIN = 0x5B
+VK_RWIN = 0x5C
 VK_V = 0x56
 
 class KEYBDINPUT(ctypes.Structure):
@@ -105,7 +110,7 @@ class SafeTextInjector:
 
     @property
     def paste_delay_ms(self) -> int:
-        return getattr(self.config.text, "paste_delay_ms", 65)
+        return max(getattr(self.config.text, "paste_delay_ms", 120), 120)
 
     # -------------------------------------------------------------------------
     # Win32 Clipboard Helpers
@@ -285,8 +290,19 @@ class SafeTextInjector:
     def _simulate_paste(self) -> bool:
         """
         Simulates Ctrl + V paste keystroke.
+        Releases any held modifier keys first to prevent Alt+Ctrl+V or Shift+Ctrl+V contamination.
         Tries Win32 SendInput first, then Win32 keybd_event, and finally pynput Controller.
         """
+        # Step 0: Ensure interfering modifiers (Alt, Shift, Win) are released before Ctrl+V
+        if HAS_WIN32:
+            try:
+                user32 = ctypes.windll.user32
+                for vk in (VK_MENU, VK_SHIFT, VK_LWIN, VK_RWIN):
+                    if user32.GetAsyncKeyState(vk) & 0x8000:
+                        user32.keybd_event(vk, 0, KEYEVENTF_KEYUP, 0)
+            except Exception:
+                pass
+
         # Strategy 1: Win32 SendInput
         try:
             events = [

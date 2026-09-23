@@ -1,7 +1,7 @@
 {
     "hotkey": {
         "key": "<alt>+<grave>",
-        "mode": "toggle",
+        "mode": "push_to_talk",
         "debounce_ms": 150
     },
     "audio": {
@@ -10,7 +10,7 @@
         "channels": 1,
         "sound_effects": false,
         "silence_trim": true,
-        "silence_threshold_db": -48.0,
+        "silence_threshold_db": -54.0,
         "pad_duration_ms": 350,
         "normalize_audio": true
     },
@@ -18,7 +18,7 @@
         "backend": "local",
         "local_model": "base.en",
         "compute_type": "int8",
-        "device": "auto",
+        "device": "cpu",
         "beam_size": 5,
         "initial_prompt": "Orvo dictation: accurate transcription of spoken English into clear, coherent, well-structured sentences with proper grammar and punctuation.",
         "vad_filter": false,
@@ -35,7 +35,7 @@
         "remove_fillers": true,
         "fix_disfluencies": true,
         "voice_commands": true,
-        "paste_delay_ms": 60,
+        "paste_delay_ms": 120,
         "fallback_to_typing": true
     },
     "ui": {

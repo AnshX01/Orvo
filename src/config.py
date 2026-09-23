@@ -138,7 +138,7 @@ DEFAULT_CONFIG_DOCUMENTED = """{
         // Convert spoken voice commands (e.g. "new line", "period", "bullet point")
         "voice_commands": true,
         // Delay in ms for target window WM_PASTE processing before restoring clipboard
-        "paste_delay_ms": 60,
+        "paste_delay_ms": 120,
         // Direct keystroke typing fallback if clipboard is locked
         "fallback_to_typing": true
     },
@@ -308,7 +308,7 @@ class TextConfig:
     remove_fillers: bool = True
     fix_disfluencies: bool = True
     voice_commands: bool = True
-    paste_delay_ms: int = 60
+    paste_delay_ms: int = 120
     fallback_to_typing: bool = True
 
     @classmethod
@@ -320,9 +320,9 @@ class TextConfig:
         fix_disfluencies = bool(data.get("fix_disfluencies", True))
         voice_commands = bool(data.get("voice_commands", True))
         try:
-            paste_delay_ms = max(0, int(data.get("paste_delay_ms", 60)))
+            paste_delay_ms = max(0, int(data.get("paste_delay_ms", 120)))
         except (ValueError, TypeError):
-            paste_delay_ms = 60
+            paste_delay_ms = 120
         fallback_to_typing = bool(data.get("fallback_to_typing", True))
 
         return cls(

@@ -99,7 +99,7 @@ def get_default_input_device() -> Optional[Dict[str, Any]]:
 def trim_silence(
     audio: np.ndarray,
     sample_rate: int = 16000,
-    threshold_db: float = -48.0,
+    threshold_db: float = -54.0,
     frame_duration_ms: int = 20,
     pad_duration_ms: int = 350
 ) -> np.ndarray:
@@ -255,6 +255,7 @@ class AudioRecorder:
         self.min_duration_sec = min_duration_sec
         self.block_size = block_size
         self.pre_roll_sec = max(0.35, pre_roll_sec)
+        self.max_duration_sec = 120.0  # Hard 2-minute safety limit preventing memory explosion
 
         # Circular pre-roll buffer: keeps last pre_roll_sec frames
         num_pre_roll_blocks = max(1, int(self.pre_roll_sec * self.sample_rate / self.block_size) + 1)
@@ -270,8 +271,10 @@ class AudioRecorder:
         self._audio_level: float = 0.0
         self._level_lock = threading.Lock()
 
-        # Recording timestamp
+        # Voice Activity Detection (VAD) & speech onset tracking
         self._record_start_time: float = 0.0
+        self._has_speech_started: bool = False
+        self._last_speech_time: float = 0.0
 
         # Pre-warm stream for instant low-latency recording
         self._warmup_stream()
@@ -326,15 +329,22 @@ class AudioRecorder:
         # Flatten indata to 1D float32
         data_1d = indata.flatten().astype(np.float32)
 
-        # Store in buffer
+        # Store in buffer with hard safety cap preventing memory leaks
         with self._lock:
             if self._is_recording:
-                self._chunks.append(data_1d.copy())
+                max_chunks = int(self.sample_rate * self.max_duration_sec / self.block_size)
+                if len(self._chunks) < max_chunks:
+                    self._chunks.append(data_1d.copy())
             else:
                 self._ring_buffer.append(data_1d.copy())
 
-        # Compute RMS energy for VU meter
+        # Compute RMS energy for VU meter & speech activity tracking
         rms = float(np.sqrt(np.mean(data_1d ** 2)))
+        now = time.monotonic()
+        if rms >= 0.002:  # Voice activity threshold (~-54 dB)
+            self._has_speech_started = True
+            self._last_speech_time = now
+
         if rms > 1e-5:
             db = 20.0 * math.log10(rms)
             # Map decibel range [-50 dB, -5 dB] to normalized [0.0, 1.0]
@@ -398,6 +408,25 @@ class AudioRecorder:
     # Recording Control
     # -------------------------------------------------------------------------
 
+    def has_speech_started(self) -> bool:
+        """Returns True if any vocal energy has been registered during this recording session."""
+        return self._has_speech_started
+
+    def get_silence_duration(self) -> float:
+        """Returns the number of seconds elapsed since speech was last heard, or since recording started."""
+        if not self._is_recording:
+            return 0.0
+        now = time.monotonic()
+        if self._has_speech_started:
+            return max(0.0, now - self._last_speech_time)
+        return max(0.0, now - self._record_start_time)
+
+    def get_recording_duration(self) -> float:
+        """Returns the current recording duration in seconds."""
+        if not self._is_recording:
+            return 0.0
+        return max(0.0, time.monotonic() - self._record_start_time)
+
     def start_recording(self) -> bool:
         """
         Start audio capture instantly.
@@ -422,7 +451,10 @@ class AudioRecorder:
             self._ring_buffer.clear()
 
             self._is_recording = True
-            self._record_start_time = time.monotonic()
+            now = time.monotonic()
+            self._record_start_time = now
+            self._last_speech_time = now
+            self._has_speech_started = False
 
             # Play start cue tone
             self.start_sound()
@@ -444,6 +476,7 @@ class AudioRecorder:
                 return np.zeros(0, dtype=np.float32)
 
             self._is_recording = False
+            self._has_speech_started = False
 
             # Reset VU meter level
             with self._level_lock:
@@ -475,7 +508,7 @@ class AudioRecorder:
             processed = trim_silence(
                 processed,
                 sample_rate=self.sample_rate,
-                threshold_db=self.silence_threshold_db,
+                threshold_db=getattr(self, "silence_threshold_db", -54.0),
                 frame_duration_ms=20,
                 pad_duration_ms=getattr(self, "pad_duration_ms", 350)
             )
@@ -486,7 +519,7 @@ class AudioRecorder:
             # If trimmed audio is shorter than minimum speech duration, verify raw RMS before discarding
             if trimmed_duration < self.min_duration_sec:
                 raw_rms = float(np.sqrt(np.mean(raw_audio ** 2))) if len(raw_audio) > 0 else 0.0
-                if raw_rms >= 0.002:
+                if raw_rms >= 0.0005:
                     logger.info("Trimmed below min duration, but raw audio has speech energy (RMS=%.5f); retaining raw audio.", raw_rms)
                     processed = raw_audio
                 else:

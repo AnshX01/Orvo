@@ -204,7 +204,7 @@ class HotkeyManager:
         on_record_start: Optional[Callable[[], None]] = None,
         on_record_stop: Optional[Callable[[], None]] = None,
         on_hotkey_triggered: Optional[Callable[[str], None]] = None,
-        max_duration_seconds: float = 180.0,
+        max_duration_seconds: float = 120.0,
     ):
         """
         Initialize the HotkeyManager.
@@ -373,6 +373,13 @@ class HotkeyManager:
 
         self._callback_executor.submit(_worker)
 
+    def reset_state(self) -> None:
+        """Reset internal key-tracking and active state when recording stops externally."""
+        with self._lock:
+            self._is_active = False
+            self._key_held = False
+            self._currently_pressed.clear()
+
     # -------------------------------------------------------------------------
     # Keyboard Hook Handlers
     # -------------------------------------------------------------------------
@@ -528,19 +535,14 @@ class HotkeyManager:
                     self._key_held = False
 
                     if self.mode == "push_to_talk" and self._is_active:
-                        now = time.monotonic()
-                        # Debounce check
-                        if (now - self._last_event_time) < (self.debounce_ms / 1000.0):
-                            return
-                        self._last_event_time = now
-
+                        self._last_event_time = time.monotonic()
                         logger.debug("Push-to-talk stopped by hotkey release.")
                         self._dispatch_stop()
         except Exception as exc:
             logger.debug("Exception in hotkey _on_release: %s", exc)
 
     # -------------------------------------------------------------------------
-    # Win32 Watchdog Safeguard for Lost Keyup Events
+    # Win32 Watchdog Safeguard for Lost Keyup Events & Max Duration
     # -------------------------------------------------------------------------
 
     def _are_all_target_keys_physically_down(self) -> bool:
@@ -571,31 +573,38 @@ class HotkeyManager:
     def _watchdog_loop(self) -> None:
         """
         Background watchdog thread that continuously checks physical key states
-        and safeguard timeouts during Push-to-Talk recording.
+        and safeguard timeouts across all modes (push-to-talk and toggle).
         """
         while not self._stop_watchdog_event.is_set():
             time.sleep(0.06)  # 60ms polling interval
 
             with self._lock:
+                # Key-held recovery for toggle mode: if keys are physically up, clear _key_held
+                if self.mode == "toggle" and self._key_held:
+                    if not self._are_all_target_keys_physically_down():
+                        self._key_held = False
+                        self._currently_pressed.clear()
+
                 if not self._is_listening or not self._is_active:
                     continue
 
-                # Safeguard 1: Maximum duration safeguard for Push-to-Talk
-                if self.mode == "push_to_talk":
-                    duration = time.monotonic() - self._recording_start_time
-                    if duration > self.max_duration_seconds:
-                        logger.warning(
-                            "Push-to-talk exceeded max duration safeguard (%.1fs). Auto-stopping.",
-                            self.max_duration_seconds
-                        )
-                        self._currently_pressed.clear()
-                        self._key_held = False
-                        self._dispatch_stop()
-                        continue
+                duration = time.monotonic() - self._recording_start_time
 
-                    # Safeguard 2: Physical key state check via GetAsyncKeyState
+                # Safeguard 1: Universal maximum duration safeguard (all modes)
+                if duration > self.max_duration_seconds:
+                    logger.warning(
+                        "Recording exceeded max duration safeguard (%.1fs) in mode '%s'. Auto-stopping.",
+                        self.max_duration_seconds, self.mode
+                    )
+                    self._currently_pressed.clear()
+                    self._key_held = False
+                    self._dispatch_stop()
+                    continue
+
+                # Safeguard 2: Physical key state check via GetAsyncKeyState for Push-to-Talk
+                if self.mode == "push_to_talk":
                     if not self._are_all_target_keys_physically_down():
-                        logger.info("Lost keyup detected via Win32 GetAsyncKeyState. Stopping recording.")
+                        logger.info("Lost keyup detected via Win32 GetAsyncKeyState in push-to-talk. Stopping recording.")
                         self._currently_pressed.clear()
                         self._key_held = False
                         self._dispatch_stop()

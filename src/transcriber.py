@@ -31,11 +31,6 @@ from src.sentence_former import SentenceFormer
 
 # Known Whisper silence hallucinations commonly outputted on near-silent inputs
 HALLUCINATION_BLACKLIST = {
-    "you",
-    "you.",
-    "thank you",
-    "thank you.",
-    "thank you very much.",
     "thanks for watching.",
     "thanks for watching!",
     "thank you for watching.",
@@ -46,10 +41,7 @@ HALLUCINATION_BLACKLIST = {
     "please subscribe",
     "please subscribe!",
     "subscribe to my channel",
-    "bye.",
-    "mbc",
     "the end.",
-    "silent",
     "[silence]",
     "[music]",
     "(silence)",
@@ -231,9 +223,18 @@ class TranscriberManager:
                 audio_data = audio_data.flatten()
             audio_data = audio_data.astype(np.float32)
 
-            # Silence check: calculate RMS energy
+            # Safety guard against Out-Of-Memory: Cap audio length to maximum 120 seconds
+            max_samples = 16000 * 120
+            if len(audio_data) > max_samples:
+                logger.warning(
+                    "Audio length (%.1fs) exceeds max inference window. Truncating to recent 120s to protect memory.",
+                    len(audio_data) / 16000.0
+                )
+                audio_data = audio_data[-max_samples:]
+
+            # Silence check: calculate RMS energy (threshold lowered to 0.0005 to preserve soft speech)
             rms = float(np.sqrt(np.mean(audio_data ** 2))) if len(audio_data) > 0 else 0.0
-            if rms < 0.002:  # Threshold for pure ambient silence
+            if rms < 0.0005:  # Pure ambient digital silence
                 logger.debug(f"Suppressed transcription: pure silence detected (RMS={rms:.6f}).")
                 return ""
 
@@ -309,10 +310,13 @@ class TranscriberManager:
 
             text_parts = []
             for seg in segments:
-                # Retain all spoken text; only skip if probability of no speech exceeds 92%
-                if seg.no_speech_prob > 0.92:
+                txt = (seg.text or "").strip()
+                if not txt:
                     continue
-                text_parts.append(seg.text)
+                # Only discard if no_speech_prob is practically 100% and text is trivial
+                if seg.no_speech_prob >= 0.98 and len(txt) <= 2:
+                    continue
+                text_parts.append(txt)
 
             result = " ".join(text_parts).strip()
             elapsed_ms = (time.perf_counter() - start_t) * 1000.0
