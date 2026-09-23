@@ -17,12 +17,7 @@ from typing import Any, Dict, List, Optional, Union
 import numpy as np
 import sounddevice as sd
 
-# Optional import of winsound (standard on Windows)
-try:
-    import winsound
-    HAS_WINSOUND = True
-except ImportError:
-    HAS_WINSOUND = False
+HAS_WINSOUND = False
 
 # Import AudioConfig if available
 try:
@@ -237,7 +232,7 @@ class AudioRecorder:
             self.device_index = getattr(config, "device_index", device_index)
             self.sample_rate = getattr(config, "sample_rate", sample_rate)
             self.channels = getattr(config, "channels", channels)
-            self.sound_effects = getattr(config, "sound_effects", False)
+            self.sound_effects = False
             self.silence_trim = getattr(config, "silence_trim", silence_trim)
             self.silence_threshold_db = getattr(config, "silence_threshold_db", -48.0)
             self.pad_duration_ms = getattr(config, "pad_duration_ms", 350)
@@ -246,7 +241,7 @@ class AudioRecorder:
             self.device_index = device_index
             self.sample_rate = sample_rate
             self.channels = channels
-            self.sound_effects = sound_effects
+            self.sound_effects = False
             self.silence_trim = silence_trim
             self.silence_threshold_db = silence_threshold_db
             self.pad_duration_ms = 350
@@ -280,36 +275,24 @@ class AudioRecorder:
         self._warmup_stream()
 
     # -------------------------------------------------------------------------
-    # Audio Feedback Tones (winsound chirps)
+    # Audio Feedback Tones (Completely Disabled / Silent)
     # -------------------------------------------------------------------------
 
-    def play_beep(self, freq: int, duration_ms: int) -> None:
-        """
-        Play a synthesized tone asynchronously in a background daemon thread.
-        Never blocks the calling thread or audio capture.
-        """
-        if not self.sound_effects or not HAS_WINSOUND:
-            return
-
-        def _beep_worker():
-            try:
-                winsound.Beep(int(freq), int(duration_ms))
-            except Exception as exc:
-                logger.debug("Sound cue error: %s", exc)
-
-        threading.Thread(target=_beep_worker, daemon=True, name="AudioCueThread").start()
+    def play_beep(self, freq: int = 0, duration_ms: int = 0) -> None:
+        """No-op: All audio feedback sounds have been permanently removed from Orvo."""
+        pass
 
     def start_sound(self) -> None:
-        """Subtle 800Hz 50ms chirp on record start."""
-        self.play_beep(800, 50)
+        """No-op: All audio feedback sounds have been permanently removed from Orvo."""
+        pass
 
     def stop_sound(self) -> None:
-        """Subtle 1200Hz 60ms chirp on record stop / complete."""
-        self.play_beep(1200, 60)
+        """No-op: All audio feedback sounds have been permanently removed from Orvo."""
+        pass
 
     def error_sound(self) -> None:
-        """Subtle 400Hz 100ms chirp on error or disconnected device."""
-        self.play_beep(400, 100)
+        """No-op: All audio feedback sounds have been permanently removed from Orvo."""
+        pass
 
     # -------------------------------------------------------------------------
     # Audio Stream Callback & Pre-warming
@@ -443,7 +426,6 @@ class AudioRecorder:
             # Ensure stream is active
             if self._stream is None or not self._stream.active:
                 if not self._warmup_stream():
-                    self.error_sound()
                     return False
 
             # Seed chunks with circular pre-roll buffer
@@ -456,8 +438,6 @@ class AudioRecorder:
             self._last_speech_time = now
             self._has_speech_started = False
 
-            # Play start cue tone
-            self.start_sound()
             logger.info("Recording started instantly with %d pre-roll blocks", len(self._chunks))
             return True
 
@@ -485,9 +465,6 @@ class AudioRecorder:
             # Reset VU meter level
             with self._level_lock:
                 self._audio_level = 0.0
-
-            # Play stop cue tone
-            self.stop_sound()
 
             # Gather chunks
             if not self._chunks:
@@ -595,8 +572,8 @@ class AudioRecorder:
                 self._is_recording = True
 
     def set_sound_effects(self, enabled: bool) -> None:
-        """Toggle synthesized audio cue chirps."""
-        self.sound_effects = enabled
+        """No-op: All audio feedback sounds have been permanently removed from Orvo."""
+        self.sound_effects = False
 
     def update_config(self, config: Any) -> None:
         """Update settings from an AudioConfig instance."""
@@ -604,7 +581,7 @@ class AudioRecorder:
             new_device = getattr(config, "device_index", self.device_index)
             self.sample_rate = getattr(config, "sample_rate", self.sample_rate)
             self.channels = getattr(config, "channels", self.channels)
-            self.sound_effects = getattr(config, "sound_effects", self.sound_effects)
+            self.sound_effects = False
             self.silence_trim = getattr(config, "silence_trim", self.silence_trim)
             self.silence_threshold_db = getattr(config, "silence_threshold_db", self.silence_threshold_db)
             self.normalize_audio = getattr(config, "normalize_audio", self.normalize_audio)

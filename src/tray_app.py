@@ -315,11 +315,6 @@ class TrayApp:
             item("Microphone", devices_menu),
             Menu.SEPARATOR,
             item(
-                "Sound Feedback",
-                self.toggle_sound,
-                checked=lambda it: self.config.audio.sound_effects,
-            ),
-            item(
                 "Floating HUD",
                 self.toggle_hud,
                 checked=lambda it: self.config.ui.show_hud,
@@ -393,13 +388,9 @@ class TrayApp:
         self.refresh_menu()
 
     def toggle_sound(self) -> None:
-        """Toggles audio chime feedback on/off."""
-        new_val = not self.config.audio.sound_effects
-        self.config.audio.sound_effects = new_val
-        self.config.ui.sound_feedback = new_val
-        ConfigManager().update(audio=self.config.audio, ui=self.config.ui)
-        if self.on_sound_toggle:
-            self.on_sound_toggle(new_val)
+        """No-op: All audio feedback sounds have been permanently removed from Orvo."""
+        self.config.audio.sound_effects = False
+        self.config.ui.sound_feedback = False
         self.refresh_menu()
 
     def toggle_hud(self) -> None:
