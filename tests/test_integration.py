@@ -110,6 +110,24 @@ class TestIntegrationPipeline(unittest.TestCase):
         self.app._abort_recording()
         self.assertEqual(self.app.state, AppState.IDLE)
 
+    def test_05_toggle_mode_persists_during_silence(self):
+        """Verify toggle mode stays active during pauses and does not prematurely auto-stop."""
+        self.app._on_hotkey_start()
+        self.assertEqual(self.app.state, AppState.RECORDING)
+
+        # Allow VU meter streamer to run for 0.3s with zero speech
+        time.sleep(0.3)
+
+        # App must remain in RECORDING state (no premature auto-abort or auto-stop)
+        self.assertEqual(self.app.state, AppState.RECORDING)
+
+        # Cleanly stop via user hotkey stop
+        self.app._on_hotkey_stop()
+        start_wait = time.time()
+        while self.app.state != AppState.IDLE and (time.time() - start_wait) < 4.0:
+            time.sleep(0.05)
+        self.assertEqual(self.app.state, AppState.IDLE)
+
 
 if __name__ == "__main__":
     unittest.main()

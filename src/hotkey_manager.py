@@ -498,15 +498,20 @@ class HotkeyManager:
                                 return
                             self._key_held = True
 
-                            # Debounce check
-                            if (now - self._last_event_time) < (self.debounce_ms / 1000.0):
+                            # Enforce robust toggle debounce (at least 400ms) to prevent accidental double-toggle
+                            toggle_debounce = max(0.40, self.debounce_ms / 1000.0)
+                            if (now - self._last_event_time) < toggle_debounce:
                                 return
-                            self._last_event_time = now
 
                             if not self._is_active:
+                                self._last_event_time = now
                                 logger.info("Toggle mode started recording via hotkey.")
                                 self._dispatch_start()
                             else:
+                                # When stopping, ensure recording has been active for at least 0.35s to prevent key-bounce cutoffs
+                                if (now - self._recording_start_time) < 0.35:
+                                    return
+                                self._last_event_time = now
                                 logger.info("Toggle mode stopped recording via hotkey.")
                                 self._dispatch_stop()
         except Exception as exc:

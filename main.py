@@ -290,22 +290,8 @@ class OrvoApp:
                     threading.Thread(target=self._on_hotkey_stop, daemon=True, name="SafetyStopThread").start()
                     break
 
-                # Safeguard 2: Smart VAD auto-stop / auto-abort for toggle mode
-                if getattr(self.hotkey_manager, "mode", "toggle") == "toggle":
-                    has_speech = self.audio_recorder.has_speech_started()
-                    silence_dur = self.audio_recorder.get_silence_duration()
-
-                    # Speech finished: trailing silence after speech registered
-                    if has_speech and silence_dur >= 2.5 and duration >= 1.0:
-                        logger.info("Speech pause detected (%.1fs trailing silence in toggle mode). Auto-finishing dictation.", silence_dur)
-                        threading.Thread(target=self._on_hotkey_stop, daemon=True, name="AutoStopThread").start()
-                        break
-                    # Zero speech registered after 8.0s of toggle mode: abort cleanly
-                    elif not has_speech and duration >= 8.0:
-                        logger.info("No speech detected after %.1fs in toggle mode. Auto-aborting recording.", duration)
-                        threading.Thread(target=self._abort_recording, daemon=True, name="AutoAbortThread").start()
-                        break
-
+                # In toggle mode, recording remains active until the user presses the hotkey to stop.
+                # Hard 120s duration cap above safeguards against runaway recording/memory leakage.
                 time.sleep(0.033)  # ~30 Hz smooth refresh
 
         self._vu_thread = threading.Thread(target=_vu_loop, daemon=True, name="VuMeterStreamer")
