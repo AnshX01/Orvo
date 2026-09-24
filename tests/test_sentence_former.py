@@ -66,6 +66,60 @@ class TestSentenceFormer(unittest.TestCase):
             "I should have checked the logs."
         )
 
+    def test_mode_vs_more_disambiguation(self):
+        """Verify 'more' is corrected to 'mode' in voice dictation contexts."""
+        self.assertEqual(
+            self.former.format("i want to make a speech to text more"),
+            "I want to make a speech to text mode."
+        )
+        self.assertEqual(
+            self.former.format("switch to toggle more please"),
+            "Switch to toggle mode please."
+        )
+        self.assertEqual(
+            self.former.format("push to talk more is enabled"),
+            "Push to talk mode is enabled."
+        )
+
+    def test_acoustic_homophones(self):
+        """Verify homophone resolution across all common phonetic pairs."""
+        cases = [
+            ("i have been working for to hours", "I have been working for two hours."),
+            ("this is to much for me to handle", "This is too much for me to handle."),
+            ("it is better then that", "It is better than that."),
+            ("i do not know weather it will rain", "I do not know whether it will rain."),
+            ("please come hear right now", "Please come here right now."),
+            ("you are write about this", "You are right about this."),
+            ("i need to right code today", "I need to write code today."),
+            ("make sure not to loose your keys", "Make sure not to lose your keys."),
+            ("the passed few weeks have been busy", "The past few weeks have been busy."),
+            ("all accept one person came", "All except one person came."),
+            ("this will effect the final results", "This will affect the final results."),
+            ("bare with me for a moment", "Bear with me for a moment."),
+            ("take a brake and relax", "Take a break and relax."),
+            ("hit the breaks quickly", "Hit the brakes quickly."),
+            ("rest in piece", "Rest in peace."),
+            ("this is a peace of cake", "This is a piece of cake."),
+            ("he played an important roll", "He played an important role."),
+            ("check out our new web sight", "Check out our new website."),
+            ("in principal this should work", "In principle this should work."),
+            ("she gave me a nice complement", "She gave me a nice compliment."),
+        ]
+        for spoken, expected in cases:
+            with self.subTest(spoken=spoken):
+                self.assertEqual(self.former.format(spoken), expected)
+
+    def test_technical_compound_words(self):
+        """Verify split technical terms are consolidated properly."""
+        self.assertEqual(
+            self.former.format("connect to the data base and inspect the code base"),
+            "Connect to the database and inspect the codebase."
+        )
+        self.assertEqual(
+            self.former.format("this is an open source full stack app"),
+            "This is an open-source full-stack app."
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

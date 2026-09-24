@@ -110,8 +110,10 @@ DEFAULT_CONFIG_DOCUMENTED = """{
         "device": "auto",
         // Beam search size (5 provides superior sentence accuracy and context)
         "beam_size": 5,
-        // Initial conditioning prompt to guide sentence formatting and coherence
-        "initial_prompt": "Hello, welcome to Orvo voice dictation. Please speak clearly, with proper punctuation.",
+        // Initial conditioning prompt to guide sentence formatting, coherence, and homophone clarity
+        "initial_prompt": "Orvo voice dictation: accurate English transcription into clear, coherent, well-structured sentences. Speech-to-text mode, toggle mode, two hours, their, they're, there, write, right, website, GitHub, VS Code, Python.",
+        // Hotwords to bias decoder towards specific technical and acoustic vocabulary
+        "hotwords": "mode, code, website, two hours, GitHub, VS Code, Python",
         // Built-in VAD filter in faster-whisper (false allows full speech capture)
         "vad_filter": false,
         // Cloud API keys
@@ -247,7 +249,8 @@ class ModelConfig:
     compute_type: str = "int8"  # "int8", "float16", "float32"
     device: str = "auto"  # "auto", "cpu", "cuda"
     beam_size: int = 5
-    initial_prompt: str = "Orvo dictation: accurate transcription of spoken English into clear, coherent, well-structured sentences with proper grammar and punctuation."
+    initial_prompt: str = "Orvo voice dictation: accurate English transcription into clear, coherent, well-structured sentences. Speech-to-text mode, toggle mode, two hours, their, they're, there, write, right, website, GitHub, VS Code, Python."
+    hotwords: str = "mode, code, website, two hours, GitHub, VS Code, Python"
     vad_filter: bool = False
     groq_api_key: str = ""
     groq_model: str = "whisper-large-v3-turbo"
@@ -274,8 +277,9 @@ class ModelConfig:
 
         initial_prompt = str(data.get(
             "initial_prompt",
-            "Orvo dictation: accurate transcription of spoken English into clear, coherent, well-structured sentences with proper grammar and punctuation."
+            "Orvo voice dictation: accurate English transcription into clear, coherent, well-structured sentences. Speech-to-text mode, toggle mode, two hours, their, they're, there, write, right, website, GitHub, VS Code, Python."
         ))
+        hotwords = str(data.get("hotwords", "mode, code, website, two hours, GitHub, VS Code, Python")).strip()
         vad_filter = bool(data.get("vad_filter", False))
 
         groq_api_key = str(data.get("groq_api_key", "")).strip()
@@ -291,6 +295,7 @@ class ModelConfig:
             device=device,
             beam_size=beam_size,
             initial_prompt=initial_prompt,
+            hotwords=hotwords,
             vad_filter=vad_filter,
             groq_api_key=groq_api_key,
             groq_model=groq_model,

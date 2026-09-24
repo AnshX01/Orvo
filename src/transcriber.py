@@ -258,7 +258,11 @@ class TranscriberManager:
 
             # Silence hallucination filtering
             clean_check = raw_text.strip().lower()
-            if not clean_check or clean_check in HALLUCINATION_BLACKLIST:
+            if (
+                not clean_check
+                or clean_check in HALLUCINATION_BLACKLIST
+                or not re.search(r"[a-zA-Z0-9]", clean_check)
+            ):
                 logger.debug(f"Suppressed hallucination text: '{raw_text}'")
                 return ""
 
@@ -295,10 +299,14 @@ class TranscriberManager:
             beam_size = getattr(self.config.model, "beam_size", 5)
             initial_prompt = getattr(self.config.model, "initial_prompt", None)
             vad_filter = getattr(self.config.model, "vad_filter", False)
+            hotwords = getattr(self.config.model, "hotwords", None)
 
             transcribe_kwargs = {
                 "language": lang,
                 "beam_size": beam_size,
+                "temperature": 0.0,
+                "without_timestamps": True,
+                "repetition_penalty": 1.05,
                 "vad_filter": vad_filter,
                 "condition_on_previous_text": False,
                 "no_speech_threshold": 0.85,
@@ -307,6 +315,8 @@ class TranscriberManager:
                 transcribe_kwargs["vad_parameters"] = dict(min_silence_duration_ms=500, speech_pad_ms=400)
             if initial_prompt:
                 transcribe_kwargs["initial_prompt"] = initial_prompt
+            if hotwords:
+                transcribe_kwargs["hotwords"] = hotwords
 
             segments, info = self._local_model.transcribe(
                 audio_data,
@@ -316,10 +326,10 @@ class TranscriberManager:
             text_parts = []
             for seg in segments:
                 txt = (seg.text or "").strip()
-                if not txt:
+                if not txt or not re.search(r"[a-zA-Z0-9]", txt):
                     continue
                 # Only discard if no_speech_prob is practically 100% and text is trivial
-                if seg.no_speech_prob >= 0.98 and len(txt) <= 2:
+                if seg.no_speech_prob >= 0.95 and len(txt) <= 2:
                     continue
                 text_parts.append(txt)
 
